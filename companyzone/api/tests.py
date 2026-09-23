@@ -25,6 +25,13 @@ class CompanyZoneAPITests(APITestCase):
     # ==============================================================
     # 🔓 AUTHENTICATION FREE ENDPOINT TESTS
     # ==============================================================
+    """
+    1. User Logs In  ──> [Send Password] ──> Django validates it
+    2. Tokens Issued <── [Access & Refresh Tokens] <── Sent back to Frontend
+    3. Read Data     ──> [Send Access Token] ──> Django returns Employee Table Data
+    4. Token Expires ──> [Access Token Dead!] ──> Django returns 401 Unauthorized
+    5. Silent Renew  ──> [Send Refresh Token] ──> Django returns New Access Token
+    """
 
     def test_user_registration_endpoint(self):
         """1. Verifies that a new user successfully register via the API"""
@@ -46,24 +53,17 @@ class CompanyZoneAPITests(APITestCase):
             "password": self.password
         }
         response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        #401 UnAuthorized, when any other credentials passed other than self.username or self.password
+        self.assertEqual(response.status_code, status.HTTP_200_UNAUTHORIZED)
         # SimpleJWT official output key checks
         self.assertIn('access', response.data)
         self.assertIn('refresh', response.data)
-
-        """
-        1. User Logs In  ──> [Send Password] ──> Django validates it
-        2. Tokens Issued <── [Access & Refresh Tokens] <── Sent back to Frontend
-        3. Read Data     ──> [Send Access Token] ──> Django returns Employee Table Data
-        4. Token Expires ──> [Access Token Dead!] ──> Django returns 401 Unauthorized
-        5. Silent Renew  ──> [Send Refresh Token] ──> Django returns New Access Token
-        """
 
     def test_new_employee_form_data_is_accessible(self):
         """3. Verifies that the metadata form data endpoint can be fetched freely"""
         url = reverse('api:emp-form-data-url')
         response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED) #401 when UnAuthorized
 
 
     # ==============================================================
@@ -84,7 +84,7 @@ class CompanyZoneAPITests(APITestCase):
             print('response1>>>>>', response.data);
             for key, value in response.items():
                 print('response1>>>>', key, value);
-            self.assertEqual(response.status_code, status.HTTP_201_CREATED) #need to change with 401 this after applying authentication
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED) #401 when UnAuthorized
 
     def test_modify_employee_denies_anonymous_user(self):
         """4. Verifies that updating an employee profile without a JWT token blocks access"""
@@ -100,7 +100,7 @@ class CompanyZoneAPITests(APITestCase):
         print('response>>>>>', response.data);
         for key, value in response.items():
             print('response>>>>>', key, value);
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST) #need to change with 401 this after applying authentication
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED) #401 when UnAuthorized
 
     def test_router_viewswet_list_is_accessible(self):
         """5. Verifies that the router base listing is open"""
@@ -114,4 +114,4 @@ class CompanyZoneAPITests(APITestCase):
         # DefaultRouter appends '-detail' for resourse-specific path like entry modification
         url = reverse('api:emp-model-viewset-detail', kwargs={'pk':1})
         response = self.client.delete(url)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED) #401 when UnAuthorized
