@@ -2,7 +2,7 @@
 
 import requests
 
-register_url = "http://127.0.0.1:8000/api/Register/"
+register_url = "http://127.0.0.1:8000/api/register/"
 data = {
     "username":"Hema",
     "password":"Hema@1234",

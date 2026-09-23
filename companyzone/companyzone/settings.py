@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir' or os.path.join(BASE_DIR, 'subdir')
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,10 +29,22 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 # SECURITY WARNING: keep the secret key used in production as secret!
 SECRET_KEY = os.getenv('SECRET_KEY')
 
-
 # SECURITY WARNING: don't run with debug turned on in production!
 # On your local computer, this will be True. On Render, we can turn it off safely.
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
+IS_PRODUCTION = os.getenv('IS_PRODUCTION', 'False') == 'True'
+
+
+# ==========================================================================
+# URLs
+# ==========================================================================
+# If running locally, it defaults to your standard Vite/React server origins
+LOCAL_FRONTEND_URLS = ['http://localhost:5173', 'http://127.0.0.1:5173']
+
+FRONTEND_URL = os.getenv('FRONTEND_URL', LOCAL_FRONTEND_URLS[0])
+BACKEND_URL = os.getenv('BACKEND_URL', LOCAL_FRONTEND_URLS[0])
+DB_HOST_URL = os.getenv('DB_HOST_URL', LOCAL_FRONTEND_URLS[0])
+MEDIA_HOST_URL = os.getenv('MEDIA_HOST_URL', LOCAL_FRONTEND_URLS[0])
 
 
 
@@ -40,13 +53,13 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 # ==========================================================================
 if DEBUG:
     ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '*']
-    # Exposes your live Render app to HTTP Host Header attacks and unwanted traffic in production. SO
 else:
+    # '*' Exposes your live Render app to HTTP Host Header attacks and unwanted traffic in production. SO,
     # Lock down production traffic to your official cloud (now, Render) deployment URL only
-    ALLOWED_HOSTS = [os.getenv('RENDER_EXTERNAL_HOSTNAME')]
+    ALLOWED_HOSTS = [os.getenv('RENDER_EXTERNAL_HOSTNAME'), '127.0.0.1']
     # Note: Render automatically creates and updates the RENDER_EXTERNAL_HOSTNAME environment variable 
     # for your live web service behind the scenes, 
-    # so you do not even have to type your exact link manually!
+    # so you do not even have to type your exact link manually in .env file/environment in production!
 
 
 
@@ -70,23 +83,190 @@ INTERNAL_IPS = [
 
 
 # ==========================================================================
-# CORS Settings - Cross-Origin Resource Sharing
+# Preflight Configuration Options - CORS Settings
 # ==========================================================================
-# If running locally, it defaults to your standard Vite/React server origins
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
-# Vite fallback local path
+# 1. Managing Allowed Origins - ALLOW COOKIES ACROSS DOMAINS
+# ---------------------------
+# You must define which domains are allowed to skip past the browser's preflight block.
 
-if DEBUG:
-    # While developing at home, allow any source to connect for easy debugging
-    CORS_ALLOW_ALL_ORIGINS = True
-else:
-    # On your live Render server, lock the gates!
-    # Only allow connection requests coming directly from your official Vercel shop URL
-    CORS_ALLOW_ALL_ORIGINS = False
-    CORS_ALLOWED_ORIGINS = [    # Use in Production
-        FRONTEND_URL,
-        'http://127.0.0.1:5173', # Vite fallback local path
-    ]
+# On your live Render server, lock the gates!
+# Only allow connection requests coming directly from your official Vercel shop URL
+CORS_ALLOW_ALL_ORIGINS = False # ONLY use "True" for development/public APIs. Avoid in production!
+CORS_ALLOWED_ORIGINS = [
+    FRONTEND_URL,
+    *LOCAL_FRONTEND_URLS,
+]
+
+# Or, use regex to allow specific patterns (like subdomains)
+# CORS_ALLOWED_ORIGIN_REGEXES = [
+#     r"^https://\w+\.example\.com$",
+# ]
+
+# ################# Later - Production-SecurityGrade #################
+# CORS cannot stop HTML form CSRF attacks, we must send CSRF Token through both Cookie and Json
+# so explicitly enabling,
+# Cookies: If your frontend needs to pass credentials (like cookies or session IDs) back to Django, 
+# CSRF engine always relies on a hidden browser "cookie" to perform its validation behind the scenes, so needed:
+CORS_ALLOW_CREDENTIALS = False
+
+# When a frontend application (e.g., https://myfrontend.com) requests data 
+# from a backend server (e.g., https://myapi.com), browser security defaults block shared cookies.
+# Enabling credentials requires a two-way handshake:
+#   * The Frontend: Must explicitly configure its request library (like fetch or axios) to include credentials (e.g., credentials: 'include').
+#   * The Backend: Must reply with the header Access-Control-Allow-Credentials: true.
+#   * If the backend does not return this header, the browser will block the response, and the frontend application will fail to read the data.
+
+# Strict Security Restrictions
+# When CORS_ALLOW_CREDENTIALS is turned on, browsers enforce a strict security rule 
+# to prevent malicious websites from stealing user data:
+#   * Wildcards are forbidden: You cannot set the allowed origin to a wildcard (Access-Control-Allow-Origin: *).
+#   * Explicit origins required: The server must explicitly list the allowed domain name (e.g., Access-Control-Allow-Origin: https://myfrontend.com).
+# If a server attempts to use both a wildcard (*) and allow credentials, browsers will automatically reject the connection.
+
+# CORS_ALLOW_CREDENTIALS: controls what kind of data can be sent (secrets/cookies).
+# CORS_ALLOWED_ORIGINS: controls who is allowed to send it.
+
+
+# 2. Handling Methods and Headers
+# -------------------------------
+# Browsers send preflight checks when you use non-simple HTTP methods (like PUT, DELETE) or custom headers.
+from corsheaders.defaults import default_headers, default_methods
+
+# Allow custom headers sent by your frontend framework (e.g., Authorization headers)
+# CORS_ALLOW_HEADERS = [
+#     "accept",
+#     "accept-encoding",
+#     "authorization",
+#     "content-type",
+#     "dnt",
+#     "origin",
+#     "user-agent",
+#     "x-csrftoken",
+#     "x-requested-with",
+# ]
+CORS_ALLOW_HEADERS = list(default_headers)
+
+# Ensure 'OPTIONS' is always permitted so preflight checks can succeed
+# CORS_ALLOW_METHODS = [
+#     "GET",
+#     "POST",
+#     "PUT",
+#     "PATCH",
+#     "DELETE",
+#     "OPTIONS",
+# ]
+CORS_ALLOW_METHODS = list(default_methods)
+
+# 3. Optimizing Preflight Performance (Caching)
+# ---------------------------------------------
+# Preflight checks add network overhead because they send an extra request before every real API call. 
+# You can tell browsers to cache the preflight success response for a set period.
+
+# Cache the preflight response for 10 minutes (600 seconds)
+CORS_PREFLIGHT_MAX_AGE = 600
+
+
+
+# ==========================================================================
+# Global Authentication Mechanisms & Rate Limiting (Throttling) Configuration
+# ==========================================================================
+# to prevent brute-force attacks on public endpoints
+
+REST_FRAMEWORK = {
+    # 'DEFAULT_PERMISSION_CLASSES': [
+    #     'rest_framework.permissions.IsAuthenticated', # The Global Lock
+    # ],
+    # Configure DRF to use JWT authentication by default
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication', # Allows Django Admin to still work
+    ),
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle', # For unauthenticated users
+        'rest_framework.throttling.UserRateThrottle', # For logged-in users
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/day', # Unauthenticated IP limit across the whole site
+        'user': '1000/day', # Authenticated user limit across the whole site
+        'login_burst': '5/min', # Specific tight limit for authentication routes
+    }
+}
+
+# ==========================================================================
+# SimpleJWT Custom Settings
+# ==========================================================================
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    # If 'ROTATE_REFRESH_TOKENS'=False, the TokenRefreshView would only return the "access" token, leaving the old refresh token active.
+    # If 'ROTATE_REFRESH_TOKENS'=True, It automatically generates a brand-new access token AND a brand-new rotated refresh token, returning both in the JSON payload
+    'ROTATE_REFRESH_TOKENS': True, # Vital defense against stolen token 
+    'BLACKLIST_AFTER_ROTATION': True, # Breaks replay attacks instantly using old stolen tokens
+    # It doesn't matter that the real user sent Token A secondly; 
+    # Django immediately invalidates Token B (the token the hacker is currently using) and logs everyone out.
+    
+    'AUTH_HEADER_TYPES': ('Bearer',),
+
+    #################### Later:Cookie Settings #######################
+    # Custom Cookie Keys
+    # 'AUTH_COOKIE_ACCESS': 'access_token',
+    # 'AUTH_COOKIE_REFRESH': 'refresh_token',
+    # 'AUTH_COOKIE_SAMESITE': 'None',
+    # 'AUTH_COOKIE_SECURE': IS_PRODUCTION,
+    # 'AUTH_COOKIE_HTTP_ONLY': True,
+}
+
+
+
+# ################# Later - Production-SecurityGrade #################
+# ==========================================================================
+# CSRF SECURE TRUST BOUNDARIES
+# ==========================================================================
+# CSRF_TRUSTED_ORIGINS = [
+#     FRONTEND_URL,
+#     *LOCAL_FRONTEND_URLS
+# ]
+
+# ==========================================================================
+# EXPLICIT COOKIE DEPLOYMENT CONFIGURATIONS - DEPLOYMENT COOKIE TUNING
+# Because we are on separate domains (.vercel.app and .onrender.com),
+# we must use 'None' + Secure=True, meaning we rely entirely on CSRF custom headers.
+# ==========================================================================
+# CSRF_COOKIE_SAMESITE = 'None' # "None" Allows CSRF_TRUSTED_ORIGINS but CSRF_COOKIE_SECURE=True
+# CSRF_COOKIE_SECURE = True # Forces cookies over HTTPS only
+# CSRF_COOKIE_HTTPONLY = False # Keeps the cookie wide open and visible to JavaScript/Axios
+
+# Presently we are testing so making CSRF token cookie visible to js, below is for production secure-grade
+# if we are reading the CSRF token text from the JSON response body why we need CSRF Cookie settings?
+# ---------------------------------------------------------------------------------------------------
+# Django's native CSRF engine always relies on a hidden browser cookie to perform its validation behind the scenes.
+# Even though your React application reads the CSRF token text from the JSON response body (response.data.csrfToken) and ignores browser cookies, 
+# Django’s internal CsrfViewMiddleware cannot function without a background cookie.
+
+# When a user submits a state-mutating request (like a POST or PUT request), 
+# Django performs a hidden internal matching check:
+#   It looks at the custom HTTP header you manually attached (X-CSRFToken).
+#   It looks at the hidden browser cookie (named csrftoken) that it dropped behind the scenes.
+#   It cryptographically compares the header string with the cookie string. If they match, the request passes.
+
+
+
+# ==========================================================================
+# CONTENT SECURITY POLICY RULES: is a set of rules written for the user's web browser tab.
+# Your database URL does not need to be included in your Content Security Policy (CSP).
+# As a developer, you must keep a clear line between Client-to-Server connections and Server-to-Database connections. 
+#   They operate in two completely separate worlds.
+# ==========================================================================
+# This firewall dictates exactly where the browser can look or talk
+CSP_DEFAULT_SRC = ("'self'",)
+# JavaScript inside the user's browser can ONLY fetch data from,
+#   your backend API root domain server (Render/Django)
+#   your frontend root domain (Vercel/Localhost) 
+CSP_CONNECT_SRC = ("'self'", FRONTEND_URL, *LOCAL_FRONTEND_URLS)
+# Images can ONLY be pulled from your own domain and your trusted cloud bucket
+CSP_IMG_SRC = ("'self'", MEDIA_HOST_URL)
+# Blocks any malicious inline script hacks injected into inputs text fields
+CSP_SCRIPT_SRC = ("'self'",)
 
 
 
@@ -94,7 +274,6 @@ else:
 # Application definition
 # ==========================================================================
 INSTALLED_APPS = [
-    
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -110,8 +289,9 @@ INSTALLED_APPS = [
     'accounts',
     'debug_toolbar',
     'api',
-    'rest_framework',
     'corsheaders',
+    'rest_framework',
+    'rest_framework_simplejwt',
 ]
 
 
@@ -185,6 +365,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'csp.middleware.CSPMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     # 'django.contrib.auth.middleware.LoginRequiredMiddleware', # THE NATIVE DJANGO MIDDLEWARE
     'django.contrib.messages.middleware.MessageMiddleware',

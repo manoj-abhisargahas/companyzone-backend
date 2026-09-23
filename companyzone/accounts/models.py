@@ -9,8 +9,8 @@ class AppUser(AbstractUser):
     )
 
     class Meta:
-        verbose_name = 'App User' # Singular name (when editing one user)
-        verbose_name_plural = 'AppUsers' # Plural name (this fixes the sidebar title in Django aadmin)
+        verbose_name = 'AppUser' # Singular name (when editing one user)
+        verbose_name_plural = 'AppUsers' # Plural name (this fixes the sidebar title in Django admin)
     
     def __str__(self):
         return self.username

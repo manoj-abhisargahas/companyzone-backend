@@ -28,7 +28,7 @@ class CompanyZoneAPITests(APITestCase):
 
     def test_user_registration_endpoint(self):
         """1. Verifies that a new user successfully register via the API"""
-        url = reverse('api_register_url')
+        url = reverse('api:register-url')
         data = {
             "username": "newuserxyz",
             "email": "newuser@companyzone.com",
@@ -40,7 +40,7 @@ class CompanyZoneAPITests(APITestCase):
 
     def test_user_login_return_jwt_tokens(self):
         """2. Verifies that valid credentials return access and refresh JWT tokens"""
-        url = reverse('api_login_url')
+        url = reverse('api:login-url')
         data = {
             "username": self.username,
             "password": self.password
@@ -61,7 +61,7 @@ class CompanyZoneAPITests(APITestCase):
 
     def test_new_employee_form_data_is_accessible(self):
         """3. Verifies that the metadata form data endpoint can be fetched freely"""
-        url = reverse('new_emp_form_data_url')
+        url = reverse('api:emp-form-data-url')
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -74,7 +74,7 @@ class CompanyZoneAPITests(APITestCase):
             """4. Verifies that adding an employee profile without a JWT token blocks access"""
             """4. Add Employee """
             # Hitting "Employee/
-            url = reverse('emp_api_url')
+            url = reverse('api:emp-url')
             data = {
                 "eno": 1,
                 "ename": "Ravi Kiran",
@@ -90,7 +90,7 @@ class CompanyZoneAPITests(APITestCase):
         """4. Verifies that updating an employee profile without a JWT token blocks access"""
         """4. Curretnly accepting without Authentication but previous posted data will not help here"""
         # Hitting "Employee/<int:pk>/" with a primary key (1)
-        url = reverse('emp_modifyapi_url', kwargs={'pk':1})
+        url = reverse('api:emp-modify-url', kwargs={'pk':1})
         data = {
             "eno": 1,
             "ename": "Ravi Kiran",
@@ -105,13 +105,13 @@ class CompanyZoneAPITests(APITestCase):
     def test_router_viewswet_list_is_accessible(self):
         """5. Verifies that the router base listing is open"""
         # DefaultRouter appends '-list' to the basename for top-level collection requests
-        url = reverse('modelviewset_emp_api_url-list')
+        url = reverse('api:emp-model-viewset-list')
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_router_viewswet_destroy_denies_anonymous_user(self):
         """6. Verifies that deleting via ModelViewSet requires active authorization"""
         # DefaultRouter appends '-detail' for resourse-specific path like entry modification
-        url = reverse('modelviewset_emp_api_url-detail', kwargs={'pk':1})
+        url = reverse('api:emp-model-viewset-detail', kwargs={'pk':1})
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

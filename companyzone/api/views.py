@@ -1,3 +1,4 @@
+from django.http import JsonResponse
 from django.shortcuts import render
 from django.forms.models import model_to_dict
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -5,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED,\
 HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
-from .serializers import EmpSerializer, CustomEmpSerializer, UserSerializer,\
+from .serializers import EmpSerializer, CustomEmpSerializer, \
     DepartmentSerializer, LocationSerializer
 from empapp.models import Employee, Department, Location
 from django.db.utils import IntegrityError
@@ -16,12 +17,13 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.authentication import SessionAuthentication # Not used for now, using JWTAuthentication
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, DjangoModelPermissions, AllowAny
 from .permissions import UserPermissionsChecker
+from companyzone.utils import sanitize_user_input
 
 # Create your views here.
 
 # =============================== Function-based APIViews ===============================
 @api_view(["GET","POST"])
-@authentication_classes([JWTAuthentication])
+# @authentication_classes([JWTAuthentication]) # Maintained Globbaly
 @permission_classes([IsAuthenticated, UserPermissionsChecker])
 def employee(request):
     if request.method == 'GET':
@@ -40,7 +42,7 @@ def employee(request):
             return Response(ser_emps.errors, status=HTTP_400_BAD_REQUEST)
 
 @api_view(["PUT","PATCH","DELETE"])
-@authentication_classes([JWTAuthentication])
+# @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated, UserPermissionsChecker])
 def employeeModify(request, pk):
     if request.method == 'PUT':
@@ -63,15 +65,19 @@ employeeModify.permissions_required_actions_map = {
 }
 # =============================== Class-based APIViews ===============================
 # For GET, POST
-class EmployeeAPI(APIView):
-    # 1. THIS IS MANDATORY: It tells your permission class which model checkboxes to check!
-    queryset = Employee.objects.all()
+class EmployeeAPIView(APIView):
+    # Here no need for APIView:
+    # queryset = Employee.objects.all()
+    # Because we are not using:
+    # app_label = view.queryset.model._meta.app_label
+    # DjangoModelPermissions
+
     # authentication_classes = [JWTAuthentication]
 
     # if we use "DjangoModelPermissions" => POST, PUT, PATCH, DELETE only restricts but GET will not restrict 
     # so we are using our custom permission class "GroupPermissionsRequired"
     # which will retrict GET request also if not allowed for the user in admin panel
-    # permission_classes = [IsAuthenticated, UserPermissionsChecker]
+    permission_classes = [IsAuthenticated, UserPermissionsChecker]
     permissions_required_actions_map = {
         'get': ['empapp.view_employee'],
         'post': ['empapp.add_employee'],
@@ -96,10 +102,9 @@ class EmployeeAPI(APIView):
         return Response(ser_emps.errors, status=HTTP_400_BAD_REQUEST)
 
 # for GET_ONE, PUT, PATCH, DELETE
-class EmployeeModifyAPI(APIView):
-    queryset = Employee.objects.all()
+class EmployeeModifyAPIView(APIView):
     # authentication_classes = [JWTAuthentication]
-    # permission_classes = [IsAuthenticated, UserPermissionsChecker]
+    permission_classes = [IsAuthenticated, UserPermissionsChecker]
     permissions_required_actions_map = {
         'get': ['empapp.view_detail_employee'],
         'put': ['empapp.change_employee'],
@@ -112,7 +117,7 @@ class EmployeeModifyAPI(APIView):
         try:
             emp_obj = Employee.objects.get(eno=pk)
             ser_emp = EmpSerializer(emp_obj)
-            data = ser_emp.data | NewEmpFormData.getNewEmpFormData();
+            data = ser_emp.data | NewEmpFormDataAPIView.getNewEmpFormDataAPIView();
             json_data_response = Response(data)
             return json_data_response
         except Employee.DoesNotExist:
@@ -199,9 +204,9 @@ class EmployeeModifyAPI(APIView):
 
 
 # =============================== To get new Employee Form-Metadata like Departments, Locations dropdown data ===============================
-class NewEmpFormData(APIView):
+class NewEmpFormDataAPIView(APIView):
     # authentication_classes = [JWTAuthentication] # Authentication Type
-    # permission_classes = [IsAuthenticated, UserPermissionsChecker] # Authentication, Authorization
+    permission_classes = [IsAuthenticated, UserPermissionsChecker] # Authentication, Authorization
     permissions_required_actions_map = {
         'get': ['empapp.get_emp_form_metadata'],
     }
@@ -219,12 +224,12 @@ class NewEmpFormData(APIView):
         return Response(self.combined_data)
     
     @classmethod
-    def getNewEmpFormData(cls):
+    def getNewEmpFormDataAPIView(cls):
             return cls.combined_data
 
 
 # =============================== Custom Class-based APIViews which uses Pagination & Custom Seralizer ===============================
-class CustomEmployeeAPI(APIView):
+class CustomEmployeeAPIView(APIView):
     # authentication_classes = [JWTAuthentication]
     # permission_classes = [IsAuthenticated, UserPermissionsChecker]
     permissions_required_actions_map = {
@@ -255,9 +260,9 @@ class CustomEmployeeAPI(APIView):
             return Response(ser_emp.validated_data)
         return Response(ser_emp.errors, status=HTTP_400_BAD_REQUEST)
 
-class CustomEmployeeModifyAPI(APIView):
+class CustomEmployeeModifyAPIView(APIView):
     # authentication_classes = [JWTAuthentication]
-    # permission_classes = [IsAuthenticated, UserPermissionsChecker]
+    permission_classes = [IsAuthenticated, UserPermissionsChecker]
     permissions_required_actions_map = {
         'get': ['empapp.view_detail_employee'],
         'put': ['empapp.change_employee'],
@@ -286,10 +291,10 @@ class CustomEmployeeModifyAPI(APIView):
             return Response({'msg':f'Employee with id:{pk} does not exist.'}, status=HTTP_400_BAD_REQUEST)
 
 # =============================== Custom Class-based APIViews ===============================
-class ModelViewSetEmployeeAPI(ModelViewSet):
+class EmployeeModelViewSet(ModelViewSet):
     queryset = Employee.objects.all()
     serializer_class = EmpSerializer
-    authentication_classes = [JWTAuthentication]
+    # authentication_classes = [JWTAuthentication]
     permissions_required_actions_map = {
         'list': ['empapp.view_employee'],
         'retrieve': ['empapp.view_detail_employee'],
@@ -366,15 +371,5 @@ class ModelViewSetEmployeeAPI(ModelViewSet):
     @action(methods=['DELETE'], detail=True)
     def remove_archive(self, request, pk=None):
         return Response({"msg": f"Employee(ID-{pk}) Deleted whch is archived."})
-
-
-# No need Authentication and Authorization
-class RegisterToAPI(APIView):
-    def post(self, request):
-        u_obj = UserSerializer(data=request.data)
-        if u_obj.is_valid():
-            u_obj.save()
-            # Returns the safe data (username, email) along with the success status
-            return Response(u_obj.data, status=HTTP_201_CREATED)
-        # Returns validation error details (e.g., "username already exists")
-        return Response(u_obj.errors, status=HTTP_400_BAD_REQUEST)
+    
+    
