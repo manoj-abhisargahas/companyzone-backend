@@ -10,29 +10,44 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+# Quick-start development settings - unsuitable for production
+# https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+
 from pathlib import Path
 import os
-from dotenv import load_dotenv
+import environ
 from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir' or os.path.join(BASE_DIR, 'subdir')
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load the environment variables from the .env file
-# This tells Python to look exactly in the folder where manage.py lives
-load_dotenv(os.path.join(BASE_DIR, '.env'))
+# Initialize environ schema
+# 1. if env values miss, then these default values will work
+# Only provide defaults for critical variables like SECRET_KEY to prevent CI/CD build crashes
+env = environ.Env(
+    SECERT_KEY=(str, "django-insecure-fallback-key"),
+    DEBUG=(bool, False),
+    IS_PRODUCTION=(bool, True),
+    IS_LOCAL_PRODUCTION=(bool, False),
+    ADMIN_PATH=(str, '/admin'),
+    LOCAL_ADMIN_PATH=(str, '/admin'),
+)
 
+# 2. Read if .env file exists. Silently skips if missing)
+env_file = BASE_DIR / '.env'
+if env_file.exists():
+    environ.Env.read_env(env_file)
 
-# Quick-start development settings - unsuitable for production (But now changed according to production)
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+# 3. If an environment variable is found but is empty ("")
+# this case as a developer you have to take care not to put any KEY value "EMPTY".
 
-# SECURITY WARNING: keep the secret key used in production as secret!
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # On your local computer, this will be True. On Render, we can turn it off safely.
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
-IS_PRODUCTION = os.getenv('IS_PRODUCTION', 'False') == 'True'
+DEBUG = env('DEBUG')
+IS_PRODUCTION = env('IS_PRODUCTION')
+IS_LOCAL_PRODUCTION = env('IS_LOCAL_PRODUCTION')
 
 
 # ==========================================================================
@@ -41,26 +56,25 @@ IS_PRODUCTION = os.getenv('IS_PRODUCTION', 'False') == 'True'
 # If running locally, it defaults to your standard Vite/React server origins
 LOCAL_FRONTEND_URLS = ['http://localhost:5173', 'http://127.0.0.1:5173']
 
-FRONTEND_URL = os.getenv('FRONTEND_URL', LOCAL_FRONTEND_URLS[0])
-BACKEND_URL = os.getenv('BACKEND_URL', LOCAL_FRONTEND_URLS[0])
-DB_HOST_URL = os.getenv('DB_HOST_URL', LOCAL_FRONTEND_URLS[0])
-MEDIA_HOST_URL = os.getenv('MEDIA_HOST_URL', LOCAL_FRONTEND_URLS[0])
+FRONTEND_URL = env('FRONTEND_URL', default=LOCAL_FRONTEND_URLS[0])
+BACKEND_URL = env('BACKEND_URL', default=LOCAL_FRONTEND_URLS[0])
+DB_HOST_URL = env('DB_HOST_URL', default=LOCAL_FRONTEND_URLS[0])
+MEDIA_HOST_URL = env('MEDIA_HOST_URL', default=LOCAL_FRONTEND_URLS[0])
 
 
 
 # ==========================================================================
 # ALLOWED_HOSTS
 # ==========================================================================
-if DEBUG:
-    ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '*']
-else:
+if IS_PRODUCTION:
     # '*' Exposes your live Render app to HTTP Host Header attacks and unwanted traffic in production. SO,
     # Lock down production traffic to your official cloud (now, Render) deployment URL only
-    ALLOWED_HOSTS = [os.getenv('RENDER_EXTERNAL_HOSTNAME'), '127.0.0.1']
+    ALLOWED_HOSTS = [env('RENDER_EXTERNAL_HOSTNAME')]
     # Note: Render automatically creates and updates the RENDER_EXTERNAL_HOSTNAME environment variable 
     # for your live web service behind the scenes, 
     # so you do not even have to type your exact link manually in .env file/environment in production!
-
+else:
+    ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '*']
 
 
 # ==========================================================================
@@ -411,16 +425,16 @@ WSGI_APPLICATION = 'companyzone.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 # ==========================================================================
 
-if not DEBUG:
+if IS_PRODUCTION or IS_LOCAL_PRODUCTION:
     # Production Block (Runs live on Render connecting to Clever Cloud)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.getenv('DB_NAME'),
-            'USER': os.getenv('DB_USER'),
-            'PASSWORD': os.getenv('DB_PASSWORD'),
-            'HOST': os.getenv('DB_HOST'),
-            'PORT': os.getenv('DB_PORT'),
+            'NAME': env('DB_NAME'),
+            'USER': env('DB_USER'),
+            'PASSWORD': env('DB_PASSWORD'),
+            'HOST': env('DB_HOST'),
+            'PORT': env('DB_PORT'),
         }
     }
 else:
@@ -428,11 +442,11 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.getenv('LOCAL_DB_NAME'),
-            'USER': os.getenv('LOCAL_DB_USER'),
-            'PASSWORD': os.getenv('LOCAL_DB_PASSWORD'),
-            'HOST': os.getenv('LOCAL_DB_HOST'),
-            'PORT': os.getenv('LOCAL_DB_PORT'),
+            'NAME': env('LOCAL_DB_NAME'),
+            'USER': env('LOCAL_DB_USER'),
+            'PASSWORD': env('LOCAL_DB_PASSWORD'),
+            'HOST': env('LOCAL_DB_HOST'),
+            'PORT': env('LOCAL_DB_PORT'),
         }
     }
 
@@ -498,7 +512,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Dedicated collection fold
 # ==========================================================================
 # PRODUCTION MEDIA STORAGE CONFIGURATION (CLOUDINARY)
 # ==========================================================================
-if not DEBUG:
+if IS_PRODUCTION or IS_LOCAL_PRODUCTION:
     # Tell Django to route user files, docs, and videos directly to Cloudinary
     # DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage' #Deprecated
     # 🚀 OFFICIAL DJANGO 6.0 STORAGES MAP
@@ -522,9 +536,9 @@ if not DEBUG:
     }
     # Pull your secret keys securely from your hidden .env file
     CLOUDINARY_STORAGE = {
-        'CLOUD_NAME':os.getenv('CLOUDINARY_CLOUD_NAME'),
-        'API_KEY':os.getenv('CLOUDINARY_API_KEY'),
-        'API_SECRET':os.getenv('CLOUDINARY_API_SECRET'),
+        'CLOUD_NAME':env('CLOUDINARY_CLOUD_NAME'),
+        'API_KEY':env('CLOUDINARY_API_KEY'),
+        'API_SECRET':env('CLOUDINARY_API_SECRET'),
 
         # To force video field paths to override the image rule: - NO NEED if mentioned inside STORAGES
         # 'RESOURCE_TYPES': {
@@ -555,10 +569,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 # ==========================================================================
-if not DEBUG:
-    ADMIN_PATH = os.getenv('ADMIN_PATH', 'admin/') # If missing, it defaults to standard admin/
+if IS_PRODUCTION or IS_LOCAL_PRODUCTION:
+    ADMIN_PATH = env('ADMIN_PATH')
 else:
-    ADMIN_PATH = os.getenv('LOCAL_ADMIN_PATH', 'admin/')
+    ADMIN_PATH = env('LOCAL_ADMIN_PATH')
 AUTH_USER_MODEL = 'accounts.AppUser' # Format: 'your_app_name.ModelClassName'
 # Tell Django where your login page path lives for automated route blocking
 LOGIN_URL = 'login_url'

@@ -56,10 +56,10 @@ jobs:
       run: |
         python manage.py collectstatic --noinput
 
-    # Copy the dummy env configuration into place for Django to read
-    - name: Set up Test Environment Variables
-      run: |
-        cp .env-test .env
+    # # Copy the dummy env configuration into place for Django to read
+    # - name: Set up Test Environment Variables
+    #   run: |
+    #     cp .env.local .env
       
     # Execute migrations and backend logic verification, sub-app APIs, 
     # database integration, and DTL template verification

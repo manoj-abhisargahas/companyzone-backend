@@ -54,7 +54,7 @@ if settings.DEBUG:
     # Standard Media Setup:
     # static() helper function is programmed to only work when DEBUG=True. 
     # The moment you flip DEBUG = False to run your production test, the static() helper completely turns off and returns nothing.
-    # Serves user uploaded jewelry media files locally on your laptop
+    # Serves user uploaded media files locally on your laptop
     urlpatterns += static(settings.MEDIA_URL, document_root = settings.MEDIA_ROOT)
 
 

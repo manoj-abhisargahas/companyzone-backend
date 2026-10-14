@@ -54,7 +54,7 @@ class CompanyZoneAPITests(APITestCase):
         }
         response = self.client.post(url, data, format='json')
         #401 UnAuthorized, when any other credentials passed other than self.username or self.password
-        self.assertEqual(response.status_code, status.HTTP_200_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         # SimpleJWT official output key checks
         self.assertIn('access', response.data)
         self.assertIn('refresh', response.data)
