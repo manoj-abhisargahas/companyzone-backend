@@ -29,8 +29,8 @@ env = environ.Env(
     DEBUG=(bool, False),
     IS_PRODUCTION=(bool, True),
     IS_LOCAL_PRODUCTION=(bool, False),
-    ADMIN_PATH=(str, '/admin'),
-    LOCAL_ADMIN_PATH=(str, '/admin'),
+    ADMIN_PATH=(str, "/admin"),
+    LOCAL_ADMIN_PATH=(str, "/admin"),
 )
 
 # 2. Read if .env file exists. Silently skips if missing)
@@ -40,14 +40,14 @@ if env_file.exists():
 
 # 3. If an environment variable is found but is empty ("")
 # this case as a developer you have to take care not to put any KEY value "EMPTY".
-
-SECRET_KEY = env('SECRET_KEY')
+# Pull values using type-specific methods like .str(), .bool() to activate env schema fallbacks
+SECRET_KEY = env.str('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # On your local computer, this will be True. On Render, we can turn it off safely.
-DEBUG = env('DEBUG')
-IS_PRODUCTION = env('IS_PRODUCTION')
-IS_LOCAL_PRODUCTION = env('IS_LOCAL_PRODUCTION')
+DEBUG = env.bool('DEBUG')
+IS_PRODUCTION = env.bool('IS_PRODUCTION')
+IS_LOCAL_PRODUCTION = env.bool('IS_LOCAL_PRODUCTION')
 
 
 # ==========================================================================
@@ -570,9 +570,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # ==========================================================================
 if IS_PRODUCTION or IS_LOCAL_PRODUCTION:
-    ADMIN_PATH = env('ADMIN_PATH')
+    ADMIN_PATH = env.str('ADMIN_PATH')
 else:
-    ADMIN_PATH = env('LOCAL_ADMIN_PATH')
+    ADMIN_PATH = env.str('LOCAL_ADMIN_PATH')
 AUTH_USER_MODEL = 'accounts.AppUser' # Format: 'your_app_name.ModelClassName'
 # Tell Django where your login page path lives for automated route blocking
 LOGIN_URL = 'login_url'
