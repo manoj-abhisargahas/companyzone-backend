@@ -30,38 +30,40 @@ jobs:
           --health-retries=5
 
     steps:
+    # STEP 1: downloads repository’s code onto the GitHub Actions runner
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # STEP 2: Set up Python
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
         cache: 'pip'
 
-    # STEP 1: Run linter fast. If this fails, the script halts instantly!
+    # STEP 3: Run linter fast. If this fails, the script halts instantly!
     - name: Run Linter - Flake8
       run: |
         pip install flake8
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
-     # STEP 2: Install core Django dependencies
+     # STEP 4: Install core Django dependencies
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+    
+    # STEP 5: Copy the dummy env configuration into place for Django to read
+    - name: Set up Test Environment Variables
+      run: |
+        cp .env.local .env
 
-    # Tests WhiteNoise configuration and assets layout
+    # STEP 6: Tests WhiteNoise configuration and assets layout
     - name: Test Static Files Compilation
       run: |
         python manage.py collectstatic --noinput
-
-    # # Copy the dummy env configuration into place for Django to read
-    # - name: Set up Test Environment Variables
-    #   run: |
-    #     cp .env.local .env
       
-    # Execute migrations and backend logic verification, sub-app APIs, 
+    # STEP 7: Execute migrations and backend logic verification, sub-app APIs, 
     # database integration, and DTL template verification
     - name: Run Full-Stack Tests
       run: |

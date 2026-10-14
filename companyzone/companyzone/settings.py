@@ -25,7 +25,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # 1. if env values miss, then these default values will work
 # Only provide defaults for critical variables like SECRET_KEY to prevent CI/CD build crashes
 env = environ.Env(
-    SECRET_KEY=(str, "django-insecure-fallback-key"),
     DEBUG=(bool, False),
     IS_PRODUCTION=(bool, True),
     IS_LOCAL_PRODUCTION=(bool, False),
@@ -48,6 +47,7 @@ SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
 IS_PRODUCTION = env('IS_PRODUCTION')
 IS_LOCAL_PRODUCTION = env('IS_LOCAL_PRODUCTION')
+print("DEBUG-CI:", repr(IS_PRODUCTION), repr(DEBUG), (BASE_DIR / '.env').exists())
 
 
 # ==========================================================================
@@ -66,7 +66,7 @@ MEDIA_HOST_URL = env('MEDIA_HOST_URL', default=LOCAL_FRONTEND_URLS[0])
 # ==========================================================================
 # ALLOWED_HOSTS
 # ==========================================================================
-if IS_PRODUCTION:
+if IS_PRODUCTION: 
     # '*' Exposes your live Render app to HTTP Host Header attacks and unwanted traffic in production. SO,
     # Lock down production traffic to your official cloud (now, Render) deployment URL only
     ALLOWED_HOSTS = [env('RENDER_EXTERNAL_HOSTNAME')]
