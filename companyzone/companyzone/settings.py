@@ -47,7 +47,7 @@ SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
 IS_PRODUCTION = env('IS_PRODUCTION')
 IS_LOCAL_PRODUCTION = env('IS_LOCAL_PRODUCTION')
-print("DEBUG-CI:", repr(IS_PRODUCTION), repr(DEBUG), (BASE_DIR / '.env').exists())
+print("DEBUG-CI:", repr(DEBUG), repr(IS_PRODUCTION), repr(IS_LOCAL_PRODUCTION), (BASE_DIR / '.env').exists())
 
 
 # ==========================================================================
