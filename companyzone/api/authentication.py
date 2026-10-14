@@ -54,7 +54,7 @@ User = get_user_model()
 #   It attaches that fetched user object straight to request.user
 class AppUserProfile(APIView):
     permission_classes = [IsAuthenticated, UserPermissionsChecker]
-    permissions_required_actiosn_map = {
+    permissions_required_actions_map = {
         'get': ['accounts.view_appuser'],
         'put': ['accounts.change_appuser'],
         'patch': ['accounts.change_appuser'],

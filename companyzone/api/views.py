@@ -117,7 +117,7 @@ class EmployeeModifyAPIView(APIView):
         try:
             emp_obj = Employee.objects.get(eno=pk)
             ser_emp = EmpSerializer(emp_obj)
-            data = ser_emp.data | NewEmpFormDataAPIView.getNewEmpFormDataAPIView();
+            data = ser_emp.data | AddEmpFormDataAPIView.getAddEmpFormDataAPIView();
             json_data_response = Response(data)
             return json_data_response
         except Employee.DoesNotExist:
@@ -204,8 +204,8 @@ class EmployeeModifyAPIView(APIView):
 
 
 # =============================== To get new Employee Form-Metadata like Departments, Locations dropdown data ===============================
-class NewEmpFormDataAPIView(APIView):
-    # authentication_classes = [JWTAuthentication] # Authentication Type
+class AddEmpFormDataAPIView(APIView):
+    authentication_classes = [JWTAuthentication] # Authentication Type
     permission_classes = [IsAuthenticated, UserPermissionsChecker] # Authentication, Authorization
     permissions_required_actions_map = {
         'get': ['empapp.get_emp_form_metadata'],
@@ -224,14 +224,14 @@ class NewEmpFormDataAPIView(APIView):
         return Response(self.combined_data)
     
     @classmethod
-    def getNewEmpFormDataAPIView(cls):
+    def getAddEmpFormDataAPIView(cls):
             return cls.combined_data
 
 
 # =============================== Custom Class-based APIViews which uses Pagination & Custom Seralizer ===============================
 class CustomEmployeeAPIView(APIView):
-    # authentication_classes = [JWTAuthentication]
-    # permission_classes = [IsAuthenticated, UserPermissionsChecker]
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, UserPermissionsChecker]
     permissions_required_actions_map = {
         'get': ['empapp.view_employee'],
         'post': ['empapp.add_employee'],

@@ -1,4 +1,6 @@
 from django.urls import path, include
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
 from . import views
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenVerifyView
@@ -17,6 +19,9 @@ router.register('EmployeeModelViewSet', views.EmployeeModelViewSet, basename='em
 urlpatterns = [
     # No need Authentication for Register to API, this creates API user
     path('register/', RegisterAPIUserAPIView.as_view(), name='register-url'),
+
+    # The absolute lowest overhead possible for cron-job.org
+    path('ping/', require_GET(lambda request: JsonResponse({'status':'ok'})), name='ping-url'),
 
     # ===========================================================================
     # JWT Authentication Endpoints:
@@ -66,7 +71,7 @@ urlpatterns = [
 
     # Selected to serve for frontend
     path('CustomEmployee/', views.CustomEmployeeAPIView.as_view(), name='cust-emp-url'), # for GET_ALL which supports Pagination
-    path('NewEmpFormData/', views.NewEmpFormDataAPIView.as_view(), name='emp-form-data-url'),
+    path('AddEmpFormData/', views.AddEmpFormDataAPIView.as_view(), name='emp-form-data-url'),
     path('Employee/', views.EmployeeAPIView.as_view(), name='emp-url'), # for POST
     path('Employee/<int:pk>/', views.EmployeeModifyAPIView.as_view(), name='emp-modify-url'), # for GET_ONE, PUT, DELETE
 

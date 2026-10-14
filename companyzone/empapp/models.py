@@ -45,5 +45,6 @@ class GlobalPermissions(models.Model):
 
         # Define your model-independent permissions here
         permissions = [
-            ("view_dept_status", "Can view department status")
+            ("view_dept_status", "Can view department status"),
+            ("get_emp_form_metadata", "Can get add employee form data"),
         ]
